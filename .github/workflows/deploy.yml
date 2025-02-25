@@ -1,0 +1,43 @@
+name: Deploy to IIS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET 8.0
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build the app
+      run: dotnet publish -c Release -o ./publish
+
+    - name: Copy files to IIS Server via SCP
+      uses: appleboy/scp-action@v0.0.15
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }} 
+        key: ${{ secrets.SSH_PRIVATE_KEY }}  
+        source: "./publish/*"
+        target: "C:/inetpub/wwwroot/ARAMEX/CICD"
+
+    - name: Restart IIS
+      uses: appleboy/ssh-action@v0.0.15
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          iisreset
